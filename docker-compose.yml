@@ -1,0 +1,44 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gp_network
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db 
+    networks:
+      - gp_network
+
+  car_01:
+    build: ./car_simulator
+    container_name: car_01
+    environment:
+      - car_id=car-01
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+networks:
+  gp_network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+    driver: local
