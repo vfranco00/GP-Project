@@ -35,6 +35,36 @@ services:
     networks:
       - gp_network
 
+  isccp_01:
+    build: ./isccp_service
+    container_name: isccp_01
+    environment:
+      - ISCCP_ID=isccp-01
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    networks:
+      - gp_network
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=false
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    depends_on:
+      - mongo
+    networks:
+      - gp_network
+
 networks:
   gp_network:
     driver: bridge
