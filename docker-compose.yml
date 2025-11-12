@@ -35,6 +35,17 @@ services:
     networks:
       - gp_network
 
+  ssacp_01:
+    build: ./ssacp_service
+    container_name: ssacp_01
+    environment:
+      - MONGO_HOST=mongo
+    depends_on:
+      mongo:
+        condition: service_started
+    networks:
+      - gp_network
+
   isccp_01:
     build: ./isccp_service
     container_name: isccp_01
@@ -44,7 +55,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      mongo:
+      ssacp_01:
         condition: service_started
     networks:
       - gp_network
