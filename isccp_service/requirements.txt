@@ -1,2 +1,2 @@
 pika
-pymongo
+requests
