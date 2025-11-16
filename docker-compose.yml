@@ -1,4 +1,9 @@
+version: '3.8'
+
 services:
+  # ----------------------------------------------------
+  # Infraestrutura Base
+  # ----------------------------------------------------
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -13,36 +18,110 @@ services:
     networks:
       - gp_network
 
-  mongo:
-    image: mongo
-    container_name: mongo
+  dashboard:
+    build: ./dashboard_app
+    container_name: gp_dashboard
     ports:
-      - "27017:27017"
+      - "3000:3000"
+    environment:
+      - WATCHPACK_POLLING=true
     volumes:
-      - mongo-data:/data/db 
+      - ./dashboard_app/src:/app/src
     networks:
       - gp_network
 
-  car_01:
-    build: ./car_simulator
-    container_name: car_01
-    environment:
-      - car_id=car-01
-      - PYTHONUNBUFFERED=1
+  # ----------------------------------------------------
+  # Inicializador do Cluster Mongo (Agora via Arquivo)
+  # ----------------------------------------------------
+  mongo-init:
+    image: mongo
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - mongo1
+      - mongo2
+      - mongo3
+    volumes:
+      - ./init_replica.js:/init_replica.js
+    command: >
+      bash -c "sleep 15 && mongosh --host mongo1:27017 /init_replica.js"
+    networks:
+      - gp_network
+
+  # ----------------------------------------------------
+  # Cluster MongoDB (3 Nós)
+  # ----------------------------------------------------
+
+  mongo1:
+    image: mongo
+    container_name: mongo1
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data-1:/data/db
+    networks:
+      - gp_network
+
+  mongo2:
+    image: mongo
+    container_name: mongo2
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-data-2:/data/db
+    networks:
+      - gp_network
+
+  mongo3:
+    image: mongo
+    container_name: mongo3
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo-data-3:/data/db
     networks:
       - gp_network
 
   ssacp_01:
     build: ./ssacp_service
     container_name: ssacp_01
-    environment:
-      - MONGO_HOST=mongo
     depends_on:
-      mongo:
-        condition: service_started
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - gp_network
+
+  ssacp_02:
+    build: ./ssacp_service
+    container_name: ssacp_02
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - gp_network
+
+  ssacp_03:
+    build: ./ssacp_service
+    container_name: ssacp_03
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - gp_network
+
+  ssvcp_01:
+    build: ./ssvcp_service
+    container_name: ssvcp_01
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
     networks:
       - gp_network
 
@@ -55,24 +134,462 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      ssacp_01:
-        condition: service_started
     networks:
       - gp_network
 
-  mongo-express:
-    image: mongo-express
-    container_name: mongo-express
-    ports:
-      - "8081:8081"
+  isccp_02:
+    build: ./isccp_service
+    container_name: isccp_02
     environment:
-      - ME_CONFIG_MONGODB_SERVER=mongo
-      - ME_CONFIG_MONGODB_PORT=27017
-      - ME_CONFIG_MONGODB_ENABLE_ADMIN=false
-      - ME_CONFIG_BASICAUTH_USERNAME=admin
-      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+      - ISCCP_ID=isccp-02
+      - PYTHONUNBUFFERED=1
     depends_on:
-      - mongo
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_03:
+    build: ./isccp_service
+    container_name: isccp_03
+    environment:
+      - ISCCP_ID=isccp-03
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_04:
+    build: ./isccp_service
+    container_name: isccp_04
+    environment:
+      - ISCCP_ID=isccp-04
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_05:
+    build: ./isccp_service
+    container_name: isccp_05
+    environment:
+      - ISCCP_ID=isccp-05
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_06:
+    build: ./isccp_service
+    container_name: isccp_06
+    environment:
+      - ISCCP_ID=isccp-06
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_07:
+    build: ./isccp_service
+    container_name: isccp_07
+    environment:
+      - ISCCP_ID=isccp-07
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_08:
+    build: ./isccp_service
+    container_name: isccp_08
+    environment:
+      - ISCCP_ID=isccp-08
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_09:
+    build: ./isccp_service
+    container_name: isccp_09
+    environment:
+      - ISCCP_ID=isccp-09
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_10:
+    build: ./isccp_service
+    container_name: isccp_10
+    environment:
+      - ISCCP_ID=isccp-10
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_11:
+    build: ./isccp_service
+    container_name: isccp_11
+    environment:
+      - ISCCP_ID=isccp-11
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_12:
+    build: ./isccp_service
+    container_name: isccp_12
+    environment:
+      - ISCCP_ID=isccp-12
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_13:
+    build: ./isccp_service
+    container_name: isccp_13
+    environment:
+      - ISCCP_ID=isccp-13
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_14:
+    build: ./isccp_service
+    container_name: isccp_14
+    environment:
+      - ISCCP_ID=isccp-14
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  isccp_15:
+    build: ./isccp_service
+    container_name: isccp_15
+    environment:
+      - ISCCP_ID=isccp-15
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_01:
+    build: ./car_simulator
+    container_name: car_01
+    environment:
+      - CAR_ID=car-01
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_02:
+    build: ./car_simulator
+    container_name: car_02
+    environment:
+      - CAR_ID=car-02
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_03:
+    build: ./car_simulator
+    container_name: car_03
+    environment:
+      - CAR_ID=car-03
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_04:
+    build: ./car_simulator
+    container_name: car_04
+    environment:
+      - CAR_ID=car-04
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_05:
+    build: ./car_simulator
+    container_name: car_05
+    environment:
+      - CAR_ID=car-05
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_06:
+    build: ./car_simulator
+    container_name: car_06
+    environment:
+      - CAR_ID=car-06
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_07:
+    build: ./car_simulator
+    container_name: car_07
+    environment:
+      - CAR_ID=car-07
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_08:
+    build: ./car_simulator
+    container_name: car_08
+    environment:
+      - CAR_ID=car-08
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_09:
+    build: ./car_simulator
+    container_name: car_09
+    environment:
+      - CAR_ID=car-09
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_10:
+    build: ./car_simulator
+    container_name: car_10
+    environment:
+      - CAR_ID=car-10
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_11:
+    build: ./car_simulator
+    container_name: car_11
+    environment:
+      - CAR_ID=car-11
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_12:
+    build: ./car_simulator
+    container_name: car_12
+    environment:
+      - CAR_ID=car-12
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_13:
+    build: ./car_simulator
+    container_name: car_13
+    environment:
+      - CAR_ID=car-13
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_14:
+    build: ./car_simulator
+    container_name: car_14
+    environment:
+      - CAR_ID=car-14
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_15:
+    build: ./car_simulator
+    container_name: car_15
+    environment:
+      - CAR_ID=car-15
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_16:
+    build: ./car_simulator
+    container_name: car_16
+    environment:
+      - CAR_ID=car-16
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_17:
+    build: ./car_simulator
+    container_name: car_17
+    environment:
+      - CAR_ID=car-17
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_18:
+    build: ./car_simulator
+    container_name: car_18
+    environment:
+      - CAR_ID=car-18
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_19:
+    build: ./car_simulator
+    container_name: car_19
+    environment:
+      - CAR_ID=car-19
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_20:
+    build: ./car_simulator
+    container_name: car_20
+    environment:
+      - CAR_ID=car-20
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_21:
+    build: ./car_simulator
+    container_name: car_21
+    environment:
+      - CAR_ID=car-21
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_22:
+    build: ./car_simulator
+    container_name: car_22
+    environment:
+      - CAR_ID=car-22
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_23:
+    build: ./car_simulator
+    container_name: car_23
+    environment:
+      - CAR_ID=car-23
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - gp_network
+
+  car_24:
+    build: ./car_simulator
+    container_name: car_24
+    environment:
+      - CAR_ID=car-24
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - gp_network
 
@@ -81,5 +598,9 @@ networks:
     driver: bridge
 
 volumes:
-  mongo-data:
+  mongo-data-1:
+    driver: local
+  mongo-data-2:
+    driver: local
+  mongo-data-3:
     driver: local
