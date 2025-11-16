@@ -3,6 +3,7 @@ import time
 import json
 import os
 import requests
+import random
 
 rabbitmq_host = 'rabbitmq'
 exchange_name = 'car_events_exchange'
@@ -14,13 +15,19 @@ mongo_port = 27017
 mongo_db_name = 'gp_db'
 mongo_collection_name = 'tire_data'
 
-ssacp_url = 'http://ssacp_01:8000/tires'
+SSACP_NODES = [
+    'http://ssacp_01:8000/tires',
+    'http://ssacp_02:8000/tires',
+    'http://ssacp_03:8000/tires'
+]
 
 isccp_id = os.getenv('ISCCP_ID', 'isccp_unknown')
 
 def send_to_ssacp(data):
+    target_url = random.choice(SSACP_NODES)
+
     try:
-        response = requests.post(ssacp_url, json=data)
+        response = requests.post(target_url, json=data)
         if response.status_code == 200:
             print(f"[{isccp_id}] Dados enviados ao SSACP com sucesso.")
         else:
