@@ -14,33 +14,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-mongo_host = os.getenv("MONGO_HOST", "localhost")
-client = MongoClient(host=mongo_host, port=27017)
-db = client["gp_db"]
-collection = db["tire_data"]
+MONGO_URI = "mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0"
+
+try:
+    client = MongoClient(MONGO_URI)
+    db = client["gp_db"]
+    collection = db["tire_data"]
+    print(f"[SSVCP] Conectado ao Cluster MongoDB para leitura.")
+except Exception as e:
+    print(f"[SSVCP] Erro de conexão: {e}")
 
 @app.get("/")
 def home():
-    return {"message": "Vizualizaçao SSVCP"}
+    return {"service": "SSVCP - API de Visualização"}
 
 @app.get("/cars")
 def get_active_cars():
     cars = collection.distinct("car_id")
     return {"cars": cars}
 
-@app.get("/cars/{car_id}/latest")
-def get_latest_telemetry(car_id: str):
-    data = collection.find_one({"car_id": car_id}, sort=[("_id", -1)], projection={"_id": 0})
-    if not data:
-        return {"error": "Car not found"}
-    return data
-
 @app.get("/dashboard/all")
 def get_all_latest():
-    cars = collection.distinct("car_id")
-    results = []
-    for car in cars:
-        data = collection.find_one({"car_id": car}, sort=[("_id", -1)], projection={"_id": 0})
-        if data:
-            results.append(data)
-    return results
+    """ Traz o último dado de TODOS os carros """
+    try:
+        cars = collection.distinct("car_id")
+        results = []
+        for car in cars:
+            data = collection.find_one(
+                {"car_id": car},
+                sort=[("_id", -1)],
+                projection={"_id": 0}
+            )
+            if data:
+                results.append(data)
+        return results
+    except Exception as e:
+        print(f"Erro na leitura: {e}")
+        return []
+
+@app.get("/system/stats")
+def get_system_stats():
+    """ Retorna a contagem de mensagens processadas por cada ISCCP e SSACP """
+    try:
+        pipeline_isccp = [
+            {"$group": {"_id": "$processed_by_isccp", "count": {"$sum": 1}}},
+            {"$sort": {"_id": 1}}
+        ]
+        isccp_stats = list(collection.aggregate(pipeline_isccp))
+
+        pipeline_ssacp = [
+            {"$group": {"_id": "$stored_by_ssacp", "count": {"$sum": 1}}},
+            {"$sort": {"_id": 1}}
+        ]
+        ssacp_stats = list(collection.aggregate(pipeline_ssacp))
+
+        return {
+            "isccp": isccp_stats,
+            "ssacp": ssacp_stats
+        }
+    except Exception as e:
+        return {"error": str(e)}
